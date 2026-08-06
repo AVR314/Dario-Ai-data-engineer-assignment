@@ -52,6 +52,42 @@ class TransformTests(unittest.TestCase):
             "EXAMPLE PHARMA INC",
         )
 
+    def test_missing_text_markers_are_normalized_safely(self) -> None:
+        """Known placeholders should become null only on an exact match."""
+
+        transformed, _ = transform_recalls(
+            [
+                make_recall(
+                    recall_number=" N/A ",
+                    voluntary_mandated="not available",
+                    state="NULL",
+                    product_description=(
+                        "The text N/A appears as part of this description"
+                    ),
+                )
+            ],
+            source_extract_timestamp="2026-08-06T12:00:00+00:00",
+        )
+
+        row = transformed.iloc[0]
+
+        self.assertTrue(
+            pd.isna(row["recall_number"])
+        )
+
+        self.assertTrue(
+            pd.isna(row["voluntary_mandated"])
+        )
+
+        self.assertTrue(
+            pd.isna(row["state"])
+        )
+
+        self.assertEqual(
+            row["product_description"],
+            "The text N/A appears as part of this description",
+        )
+
     def test_transform_adds_classification_information(self) -> None:
         """Classification details should be joined many-to-one."""
 
@@ -65,9 +101,18 @@ class TransformTests(unittest.TestCase):
 
         row = transformed.iloc[0]
 
-        self.assertEqual(row["classification"], "Class II")
-        self.assertEqual(row["severity_rank"], 2)
-        self.assertEqual(row["severity_label"], "Moderate")
+        self.assertEqual(
+            row["classification"],
+            "Class II",
+        )
+        self.assertEqual(
+            row["severity_rank"],
+            2,
+        )
+        self.assertEqual(
+            row["severity_label"],
+            "Moderate",
+        )
         self.assertIsInstance(
             row["classification_description"],
             str,
@@ -83,11 +128,24 @@ class TransformTests(unittest.TestCase):
 
         row = transformed.iloc[0]
 
-        self.assertEqual(row["reporting_lag_days"], 9)
-        self.assertEqual(row["termination_days"], 31)
-        self.assertTrue(row["has_termination_date"])
-        self.assertEqual(row["report_month"], "2024-01")
-        self.assertFalse(row["negative_reporting_lag_flag"])
+        self.assertEqual(
+            row["reporting_lag_days"],
+            9,
+        )
+        self.assertEqual(
+            row["termination_days"],
+            31,
+        )
+        self.assertTrue(
+            row["has_termination_date"]
+        )
+        self.assertEqual(
+            row["report_month"],
+            "2024-01",
+        )
+        self.assertFalse(
+            row["negative_reporting_lag_flag"]
+        )
         self.assertFalse(
             row["negative_termination_duration_flag"]
         )
@@ -108,12 +166,18 @@ class TransformTests(unittest.TestCase):
 
         row = transformed.iloc[0]
 
-        self.assertTrue(row["negative_reporting_lag_flag"])
+        self.assertTrue(
+            row["negative_reporting_lag_flag"]
+        )
         self.assertTrue(
             row["negative_termination_duration_flag"]
         )
-        self.assertTrue(pd.isna(row["reporting_lag_days"]))
-        self.assertTrue(pd.isna(row["termination_days"]))
+        self.assertTrue(
+            pd.isna(row["reporting_lag_days"])
+        )
+        self.assertTrue(
+            pd.isna(row["termination_days"])
+        )
 
     def test_invalid_date_is_flagged_without_crashing(self) -> None:
         """A malformed source date should be preserved as a quality flag."""
@@ -129,10 +193,18 @@ class TransformTests(unittest.TestCase):
 
         row = transformed.iloc[0]
 
-        self.assertTrue(row["invalid_termination_date_flag"])
-        self.assertTrue(pd.isna(row["termination_date"]))
-        self.assertFalse(row["has_termination_date"])
-        self.assertTrue(pd.isna(row["termination_days"]))
+        self.assertTrue(
+            row["invalid_termination_date_flag"]
+        )
+        self.assertTrue(
+            pd.isna(row["termination_date"])
+        )
+        self.assertFalse(
+            row["has_termination_date"]
+        )
+        self.assertTrue(
+            pd.isna(row["termination_days"])
+        )
 
     def test_exact_duplicates_are_preserved_and_flagged(self) -> None:
         """Exact source duplicates should remain visible for quality review."""
@@ -147,7 +219,10 @@ class TransformTests(unittest.TestCase):
             source_extract_timestamp="2026-08-06T12:00:00+00:00",
         )
 
-        self.assertEqual(len(transformed), 2)
+        self.assertEqual(
+            len(transformed),
+            2,
+        )
         self.assertEqual(
             transformed["source_record_hash"].nunique(),
             1,
@@ -189,7 +264,10 @@ class TransformTests(unittest.TestCase):
             source_extract_timestamp="2026-08-06T12:00:00+00:00",
         )
 
-        self.assertEqual(len(transformed), 2)
+        self.assertEqual(
+            len(transformed),
+            2,
+        )
         self.assertEqual(
             transformed["source_record_hash"].nunique(),
             2,
@@ -217,10 +295,19 @@ class TransformTests(unittest.TestCase):
 
         row = transformed.iloc[0]
 
-        self.assertEqual(row["recall_number"], "D-2001-2024")
-        self.assertTrue(pd.isna(row["termination_date"]))
-        self.assertTrue(pd.isna(row["recalling_firm_raw"]))
-        self.assertFalse(row["has_termination_date"])
+        self.assertEqual(
+            row["recall_number"],
+            "D-2001-2024",
+        )
+        self.assertTrue(
+            pd.isna(row["termination_date"])
+        )
+        self.assertTrue(
+            pd.isna(row["recalling_firm_raw"])
+        )
+        self.assertFalse(
+            row["has_termination_date"]
+        )
 
     def test_unknown_classification_remains_visible(self) -> None:
         """Unexpected categories should remain in the data for validation."""
@@ -240,8 +327,12 @@ class TransformTests(unittest.TestCase):
             row["classification"],
             "Unexpected Class",
         )
-        self.assertTrue(pd.isna(row["severity_rank"]))
-        self.assertTrue(pd.isna(row["severity_label"]))
+        self.assertTrue(
+            pd.isna(row["severity_rank"])
+        )
+        self.assertTrue(
+            pd.isna(row["severity_label"])
+        )
 
     def test_invalid_extract_timestamp_raises_error(self) -> None:
         """An invalid extraction timestamp must fail clearly."""
@@ -258,13 +349,17 @@ class TransformTests(unittest.TestCase):
     def test_non_dictionary_record_raises_error(self) -> None:
         """Every raw record must be represented as a dictionary."""
 
-        invalid_records: Any = ["not a dictionary"]
+        invalid_records: Any = [
+            "not a dictionary"
+        ]
 
         with self.assertRaisesRegex(
             TransformationError,
             "dictionary",
         ):
-            transform_recalls(invalid_records)
+            transform_recalls(
+                invalid_records
+            )
 
 
 if __name__ == "__main__":

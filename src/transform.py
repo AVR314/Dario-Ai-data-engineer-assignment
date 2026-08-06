@@ -49,6 +49,14 @@ TEXT_FIELDS = [
     "status",
 ]
 
+MISSING_TEXT_MARKERS = {
+    "N/A",
+    "NA",
+    "NONE",
+    "NULL",
+    "NOT AVAILABLE",
+}
+
 OUTPUT_COLUMNS = [
     "record_id",
     "source_record_hash",
@@ -141,7 +149,13 @@ def build_classification_dimension() -> pd.DataFrame:
 
 
 def _clean_text_value(value: Any) -> Any:
-    """Trim whitespace and convert empty textual values into missing values."""
+    """
+    Normalize source text and convert missing-value markers to null.
+
+    Only complete values matching a known placeholder are converted. Text
+    containing one of these phrases as part of a longer description remains
+    unchanged.
+    """
 
     if value is None or pd.isna(value):
         return pd.NA
@@ -152,7 +166,13 @@ def _clean_text_value(value: Any) -> Any:
         str(value),
     ).strip()
 
-    return cleaned if cleaned else pd.NA
+    if not cleaned:
+        return pd.NA
+
+    if cleaned.upper() in MISSING_TEXT_MARKERS:
+        return pd.NA
+
+    return cleaned
 
 
 def normalize_firm_name(value: Any) -> Any:
@@ -170,11 +190,13 @@ def normalize_firm_name(value: Any) -> Any:
         return pd.NA
 
     normalized = str(cleaned).upper()
+
     normalized = re.sub(
         r"[^A-Z0-9]+",
         " ",
         normalized,
     )
+
     normalized = re.sub(
         r"\s+",
         " ",
@@ -190,8 +212,8 @@ def _parse_date_series(
     """
     Parse YYYYMMDD values and return parsed dates plus invalid-value flags.
 
-    Missing source values are not considered invalid. A non-empty value that
-    cannot be parsed is marked as invalid.
+    Missing source values and recognized placeholders are not considered
+    invalid. A different non-empty value that cannot be parsed is invalid.
     """
 
     cleaned = (
@@ -241,7 +263,7 @@ def _parse_extract_timestamp(
 def _create_source_hash(
     frame: pd.DataFrame,
 ) -> pd.Series:
-    """Create a deterministic hash from all relevant source fields."""
+    """Create a deterministic hash from all relevant transformed fields."""
 
     hash_input = (
         frame[SOURCE_FIELDS]
@@ -444,6 +466,7 @@ def transform_recalls(
         )
 
         frame[field] = parsed_dates
+
         frame[f"invalid_{field}_flag"] = (
             invalid_flags
         )

@@ -1,0 +1,5 @@
+classification,severity_rank,severity_label,classification_description,display_order
+Class I,3,High,"The highest recall severity, involving a reasonable probability of serious health consequences.",1
+Class II,2,Moderate,A recall involving possible temporary or medically reversible health consequences.,2
+Class III,1,Low,A recall where adverse health consequences are considered unlikely.,3
+Not Yet Classified,0,Unclassified,The recall had not received a final classification when the record was published.,4

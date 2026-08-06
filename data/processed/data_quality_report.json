@@ -1,0 +1,132 @@
+{
+  "generated_at_utc": "2026-08-06T15:26:57.016796+00:00",
+  "overall_status": "passed_with_warnings",
+  "total_records": 5527,
+  "schema": {
+    "required_column_count": 17,
+    "missing_required_columns": [],
+    "schema_valid": true
+  },
+  "completeness": {
+    "critical_fields": {
+      "recall_number": {
+        "field": "recall_number",
+        "missing_count": 2,
+        "available_count": 5525,
+        "missing_pct": 0.04,
+        "coverage_pct": 99.96
+      },
+      "classification": {
+        "field": "classification",
+        "missing_count": 0,
+        "available_count": 5527,
+        "missing_pct": 0.0,
+        "coverage_pct": 100.0
+      },
+      "recalling_firm_raw": {
+        "field": "recalling_firm_raw",
+        "missing_count": 0,
+        "available_count": 5527,
+        "missing_pct": 0.0,
+        "coverage_pct": 100.0
+      },
+      "product_description": {
+        "field": "product_description",
+        "missing_count": 0,
+        "available_count": 5527,
+        "missing_pct": 0.0,
+        "coverage_pct": 100.0
+      },
+      "reason_for_recall": {
+        "field": "reason_for_recall",
+        "missing_count": 0,
+        "available_count": 5527,
+        "missing_pct": 0.0,
+        "coverage_pct": 100.0
+      },
+      "recall_initiation_date": {
+        "field": "recall_initiation_date",
+        "missing_count": 0,
+        "available_count": 5527,
+        "missing_pct": 0.0,
+        "coverage_pct": 100.0
+      },
+      "report_date": {
+        "field": "report_date",
+        "missing_count": 0,
+        "available_count": 5527,
+        "missing_pct": 0.0,
+        "coverage_pct": 100.0
+      }
+    },
+    "termination_date": {
+      "field": "termination_date",
+      "missing_count": 2368,
+      "available_count": 3159,
+      "missing_pct": 42.84,
+      "coverage_pct": 57.16,
+      "interpretation": "Contextual missingness. Duration metrics must use only records with a valid termination date."
+    }
+  },
+  "duplicates": {
+    "record_id_duplicate_rows": 0,
+    "exact_duplicate_rows": 0,
+    "exact_duplicate_groups": 0,
+    "repeated_recall_number_rows": 0,
+    "repeated_recall_number_count": 0
+  },
+  "dates": {
+    "invalid_date_counts": {
+      "recall_initiation_date": 0,
+      "report_date": 0,
+      "termination_date": 0
+    },
+    "negative_reporting_lag_count": 0,
+    "negative_termination_duration_count": 0
+  },
+  "classifications": {
+    "observed_values": [
+      "Class I",
+      "Class II",
+      "Class III",
+      "Not Yet Classified"
+    ],
+    "unexpected_values": [],
+    "unexpected_record_count": 0,
+    "unmapped_record_count": 0
+  },
+  "reconciliation": {
+    "records_extracted": 5527,
+    "records_transformed": 5527,
+    "row_count_matches_extraction": true
+  },
+  "issues": [
+    {
+      "severity": "warning",
+      "code": "missing_recall_number",
+      "message": "2 records are missing the critical field 'recall_number'.",
+      "affected_records": 2
+    },
+    {
+      "severity": "info",
+      "code": "termination_date_contextual_missingness",
+      "message": "Termination-date coverage is reported separately because missing termination dates may be expected or structural. They are not automatically treated as data-quality failures.",
+      "affected_records": 2368
+    }
+  ],
+  "summary": {
+    "error_count": 0,
+    "warning_count": 1,
+    "info_count": 1
+  },
+  "pipeline_context": {
+    "pipeline_started_at_utc": "2026-08-06T15:26:49.518904+00:00",
+    "pipeline_completed_at_utc": "2026-08-06T15:26:57.045442+00:00",
+    "requested_start_date": "20210101",
+    "requested_end_date": "20260806",
+    "extraction_status": "live",
+    "used_cached_data": false,
+    "raw_record_count": 5527,
+    "transformed_record_count": 5527
+  }
+}

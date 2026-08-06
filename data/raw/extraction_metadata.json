@@ -1,0 +1,22 @@
+{
+  "source": "openFDA drug enforcement API",
+  "endpoint": "https://api.fda.gov/drug/enforcement.json",
+  "search_query": "report_date:[20210101 TO 20260806]",
+  "start_date": "20210101",
+  "end_date": "20260806",
+  "records_reported_by_api": 5527,
+  "records_extracted": 5527,
+  "count_mismatch": false,
+  "count_difference": 0,
+  "pages_requested": 6,
+  "page_size": 1000,
+  "api_key_used": false,
+  "extraction_started_at_utc": "2026-08-06T15:26:49.521048+00:00",
+  "extraction_finished_at_utc": "2026-08-06T15:26:54.781571+00:00",
+  "used_cached_data": false,
+  "warnings": [],
+  "extraction_status": "live",
+  "snapshot_saved_at_utc": "2026-08-06T15:26:54.784762+00:00",
+  "raw_snapshot_path": "data\\raw\\drug_recalls_raw.json",
+  "metadata_path": "data\\raw\\extraction_metadata.json"
+}
