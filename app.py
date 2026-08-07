@@ -580,6 +580,8 @@ def render_css() -> None:
             letter-spacing: .04em; text-transform: uppercase; }}
         .context-value {{ color: {TEXT}; font-size: 1.1rem;
             font-weight: 650; line-height: 1.25; margin-top: .08rem; }}
+        .context-note {{ color: {MUTED}; font-size: .64rem;
+            line-height: 1.25; margin-top: .14rem; }}
         .insight-layout {{ display: grid; grid-template-columns: 1.45fr 1fr 1fr;
             gap: .55rem; margin-bottom: .2rem; }}
         .primary-insight, .supporting-stat {{ background: #0f2034;
@@ -924,9 +926,10 @@ def render_overview(
             <div class="context-label">Median reporting lag</div>
             <div class="context-value">{html.escape(format_days(median_lag))}</div>
           </div>
-          <div class="context-item" title="Share with a valid termination date; missing dates may be contextual.">
+          <div class="context-item" title="Share of filtered records with a valid termination date. Interpret recent-period coverage cautiously: newer recalls may not yet have reached termination.">
             <div class="context-label">Termination-date coverage</div>
             <div class="context-value">{termination_coverage:.1f}%</div>
+            <div class="context-note">Interpret recent-period coverage cautiously: newer recalls may not yet have reached termination.</div>
           </div>
           <div class="context-item">
             <div class="context-label">Selected report period</div>
@@ -1000,6 +1003,17 @@ def render_overview(
         """,
         unsafe_allow_html=True,
     )
+
+    with st.expander("How to interpret this dashboard", expanded=False):
+        st.markdown(
+            """
+            - An enforcement report record is not necessarily a unique recall event.
+            - `status_at_publication` is historical publication context, not current recall status.
+            - Firm record volume is not a company safety or risk score.
+            - Firm normalization is intentionally conservative and does not use fuzzy entity resolution.
+            - Interpret recent-period termination-date coverage cautiously: newer recalls may not yet have reached termination.
+            """
+        )
 
     with st.expander("Classification definitions"):
         context = classification_dimension.sort_values("display_order")[
