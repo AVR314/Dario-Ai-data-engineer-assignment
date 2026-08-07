@@ -279,6 +279,72 @@ class TransformTests(unittest.TestCase):
             transformed["has_repeated_recall_number"].all()
         )
 
+    def test_missing_recall_numbers_are_not_treated_as_repeated(
+        self,
+    ) -> None:
+        """Missing identifiers must not form a repeated-number group."""
+
+        records = [
+            make_recall(
+                recall_number=None,
+                event_id="90001",
+            ),
+            make_recall(
+                recall_number=None,
+                event_id="90002",
+            ),
+            make_recall(
+                recall_number="D-REPEATED-2024",
+                event_id="90003",
+            ),
+            make_recall(
+                recall_number="D-REPEATED-2024",
+                event_id="90004",
+            ),
+        ]
+
+        transformed, _ = transform_recalls(
+            records,
+            source_extract_timestamp="2026-08-06T12:00:00+00:00",
+        )
+
+        missing_number_rows = transformed[
+            transformed["recall_number"].isna()
+        ]
+
+        repeated_number_rows = transformed[
+            transformed["recall_number"].eq("D-REPEATED-2024")
+        ]
+
+        self.assertEqual(len(missing_number_rows), 2)
+        self.assertFalse(
+            missing_number_rows["has_repeated_recall_number"].any()
+        )
+        self.assertTrue(
+            missing_number_rows[
+                "recall_number_occurrence_count"
+            ].isna().all()
+        )
+        self.assertEqual(
+            str(
+                transformed[
+                    "recall_number_occurrence_count"
+                ].dtype
+            ),
+            "Int64",
+        )
+        self.assertTrue(
+            repeated_number_rows["has_repeated_recall_number"].all()
+        )
+        self.assertTrue(
+            (
+                repeated_number_rows[
+                    "recall_number_occurrence_count"
+                ]
+                == 2
+            ).all()
+        )
+
     def test_missing_optional_fields_are_supported(self) -> None:
         """Missing optional API fields should become null values."""
 

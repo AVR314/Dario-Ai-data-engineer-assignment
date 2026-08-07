@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from src.analytics import build_analytics_outputs
-from src.api_client import fetch_drug_recalls
+from src.api_client import OpenFDAClientError, fetch_drug_recalls
 from src.config import (
     CLASSIFICATION_DIM_FILE,
     DATA_QUALITY_REPORT_FILE,
@@ -124,7 +124,7 @@ def extract_records() -> tuple[
             end_date=END_DATE,
         )
 
-    except Exception as exc:
+    except OpenFDAClientError as exc:
         fallback_reason = (
             f"{type(exc).__name__}: {exc}"
         )
@@ -167,29 +167,6 @@ def extract_records() -> tuple[
     )
 
     return records, metadata
-
-
-def save_core_outputs(
-    recalls_frame: Any,
-    classification_dimension: Any,
-    quality_report: dict[str, Any],
-) -> None:
-    """Save transformed records, dimensions and the quality report."""
-
-    save_dataframe_csv(
-        recalls_frame,
-        RECALLS_OUTPUT_FILE,
-    )
-
-    save_dataframe_csv(
-        classification_dimension,
-        CLASSIFICATION_DIM_FILE,
-    )
-
-    save_json_document(
-        quality_report,
-        DATA_QUALITY_REPORT_FILE,
-    )
 
 
 def run_etl() -> dict[str, Any]:
@@ -236,9 +213,6 @@ def run_etl() -> dict[str, Any]:
         "pipeline_started_at_utc": (
             pipeline_started_at.isoformat()
         ),
-        "pipeline_completed_at_utc": (
-            datetime.now(timezone.utc).isoformat()
-        ),
         "requested_start_date": START_DATE,
         "requested_end_date": END_DATE,
         "extraction_status": extraction_metadata.get(
@@ -257,12 +231,6 @@ def run_etl() -> dict[str, Any]:
         ),
     }
 
-    save_core_outputs(
-        recalls_frame,
-        classification_dimension,
-        quality_report,
-    )
-
     quality_status = resolve_quality_status(
         quality_report
     )
@@ -273,9 +241,25 @@ def run_etl() -> dict[str, Any]:
     )
 
     if quality_status == "failed":
+        issues = quality_report.get("issues", [])
+        issue_details = "; ".join(
+            f"{issue.get('code', 'unknown')}: "
+            f"{issue.get('message', 'No details provided.')}"
+            for issue in issues[:5]
+            if isinstance(issue, dict)
+        )
+
+        if not issue_details:
+            issue_details = "No structured issue details were provided."
+
+        LOGGER.error(
+            "Data quality validation failed. %s",
+            issue_details,
+        )
+
         raise ETLPipelineError(
             "The transformed dataset failed critical data quality "
-            "checks. Review data/processed/data_quality_report.json."
+            f"checks. Findings: {issue_details}"
         )
 
     LOGGER.info(
@@ -290,6 +274,17 @@ def run_etl() -> dict[str, Any]:
         )
     )
 
+    # All calculations must succeed before any processed output is replaced.
+    save_dataframe_csv(
+        recalls_frame,
+        RECALLS_OUTPUT_FILE,
+    )
+
+    save_dataframe_csv(
+        classification_dimension,
+        CLASSIFICATION_DIM_FILE,
+    )
+
     save_dataframe_csv(
         monthly_summary,
         MONTHLY_SUMMARY_FILE,
@@ -302,6 +297,15 @@ def run_etl() -> dict[str, Any]:
 
     pipeline_completed_at = (
         datetime.now(timezone.utc)
+    )
+
+    quality_report["pipeline_context"][
+        "pipeline_completed_at_utc"
+    ] = pipeline_completed_at.isoformat()
+
+    save_json_document(
+        quality_report,
+        DATA_QUALITY_REPORT_FILE,
     )
 
     duration_seconds = (

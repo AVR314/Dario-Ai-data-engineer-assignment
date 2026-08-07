@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-08-06T15:26:57.016796+00:00",
+  "generated_at_utc": "2026-08-07T19:21:00.771727+00:00",
   "overall_status": "passed_with_warnings",
   "total_records": 5527,
   "schema": {
@@ -96,8 +96,10 @@
     "unmapped_record_count": 0
   },
   "reconciliation": {
+    "records_reported_by_api": 5527,
     "records_extracted": 5527,
     "records_transformed": 5527,
+    "api_reported_count_matches_extraction": true,
     "row_count_matches_extraction": true
   },
   "issues": [
@@ -120,13 +122,13 @@
     "info_count": 1
   },
   "pipeline_context": {
-    "pipeline_started_at_utc": "2026-08-06T15:26:49.518904+00:00",
-    "pipeline_completed_at_utc": "2026-08-06T15:26:57.045442+00:00",
+    "pipeline_started_at_utc": "2026-08-07T19:20:53.360207+00:00",
     "requested_start_date": "20210101",
-    "requested_end_date": "20260806",
+    "requested_end_date": "20260807",
     "extraction_status": "live",
     "used_cached_data": false,
     "raw_record_count": 5527,
-    "transformed_record_count": 5527
+    "transformed_record_count": 5527,
+    "pipeline_completed_at_utc": "2026-08-07T19:21:01.699347+00:00"
   }
 }

@@ -69,7 +69,11 @@ class QualityTests(unittest.TestCase):
 
         report = build_data_quality_report(
             frame,
-            extraction_metadata={"records_extracted": 1},
+            extraction_metadata={
+                "records_reported_by_api": 1,
+                "records_extracted": 1,
+                "count_mismatch": False,
+            },
         )
 
         self.assertEqual(report["overall_status"], "passed")
@@ -82,6 +86,15 @@ class QualityTests(unittest.TestCase):
             report["reconciliation"][
                 "row_count_matches_extraction"
             ]
+        )
+        self.assertTrue(
+            report["reconciliation"][
+                "api_reported_count_matches_extraction"
+            ]
+        )
+        self.assertNotIn(
+            "api_reported_count_mismatch",
+            issue_codes(report),
         )
 
     def test_missing_required_columns_fail_report(self) -> None:
@@ -325,6 +338,48 @@ class QualityTests(unittest.TestCase):
         )
         self.assertIn(
             "extraction_transformation_count_mismatch",
+            issue_codes(report),
+        )
+
+    def test_api_reported_count_mismatch_is_warning(self) -> None:
+        """A changing API result set should be surfaced as a warning."""
+
+        frame = transform([make_recall()])
+
+        report = build_data_quality_report(
+            frame,
+            extraction_metadata={
+                "records_reported_by_api": 3,
+                "records_extracted": 1,
+                "count_mismatch": True,
+                "count_difference": -2,
+            },
+        )
+
+        reconciliation = report["reconciliation"]
+
+        self.assertEqual(
+            report["overall_status"],
+            "passed_with_warnings",
+        )
+        self.assertEqual(
+            reconciliation["records_reported_by_api"],
+            3,
+        )
+        self.assertEqual(
+            reconciliation["records_extracted"],
+            1,
+        )
+        self.assertFalse(
+            reconciliation[
+                "api_reported_count_matches_extraction"
+            ]
+        )
+        self.assertTrue(
+            reconciliation["row_count_matches_extraction"]
+        )
+        self.assertIn(
+            "api_reported_count_mismatch",
             issue_codes(report),
         )
 

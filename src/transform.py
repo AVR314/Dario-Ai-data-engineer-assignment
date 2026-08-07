@@ -318,7 +318,7 @@ def _add_record_identifiers(
     recall_counts = (
         transformed.groupby(
             "recall_number",
-            dropna=False,
+            dropna=True,
         )["record_id"]
         .transform("size")
         .astype("Int64")
@@ -330,6 +330,8 @@ def _add_record_identifiers(
 
     transformed["has_repeated_recall_number"] = (
         recall_counts.gt(1)
+        .fillna(False)
+        .astype(bool)
     )
 
     return transformed

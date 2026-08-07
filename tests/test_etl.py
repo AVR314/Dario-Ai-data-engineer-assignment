@@ -13,6 +13,7 @@ from etl import (
     resolve_quality_status,
     run_etl,
 )
+from src.api_client import OpenFDAClientError
 
 
 class ETLPipelineTests(unittest.TestCase):
@@ -120,7 +121,7 @@ class ETLPipelineTests(unittest.TestCase):
             "extraction_status": "cached_fallback",
         }
 
-        mock_fetch_drug_recalls.side_effect = RuntimeError(
+        mock_fetch_drug_recalls.side_effect = OpenFDAClientError(
             "API unavailable"
         )
 
@@ -151,7 +152,7 @@ class ETLPipelineTests(unittest.TestCase):
         )
 
         self.assertIn(
-            "RuntimeError",
+            "OpenFDAClientError",
             fallback_reason,
         )
         self.assertIn(
@@ -168,7 +169,7 @@ class ETLPipelineTests(unittest.TestCase):
     ) -> None:
         """The ETL must fail clearly if neither API nor cache is available."""
 
-        mock_fetch_drug_recalls.side_effect = RuntimeError(
+        mock_fetch_drug_recalls.side_effect = OpenFDAClientError(
             "API unavailable"
         )
 
@@ -180,9 +181,33 @@ class ETLPipelineTests(unittest.TestCase):
         ):
             extract_records()
 
+    @patch("etl.load_cached_raw_snapshot")
+    @patch("etl.raw_snapshot_exists")
+    @patch("etl.fetch_drug_recalls")
+    def test_unexpected_extraction_error_does_not_use_cache(
+        self,
+        mock_fetch_drug_recalls,
+        mock_raw_snapshot_exists,
+        mock_load_cached_raw_snapshot,
+    ) -> None:
+        """Programming defects must propagate instead of using stale data."""
+
+        mock_fetch_drug_recalls.side_effect = RuntimeError(
+            "unexpected programming failure"
+        )
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "unexpected programming failure",
+        ):
+            extract_records()
+
+        mock_raw_snapshot_exists.assert_not_called()
+        mock_load_cached_raw_snapshot.assert_not_called()
+
+    @patch("etl.save_json_document")
     @patch("etl.save_dataframe_csv")
     @patch("etl.build_analytics_outputs")
-    @patch("etl.save_core_outputs")
     @patch("etl.build_data_quality_report")
     @patch("etl.transform_recalls")
     @patch("etl.extract_records")
@@ -193,9 +218,9 @@ class ETLPipelineTests(unittest.TestCase):
         mock_extract_records,
         mock_transform_recalls,
         mock_build_data_quality_report,
-        mock_save_core_outputs,
         mock_build_analytics_outputs,
         mock_save_dataframe_csv,
+        mock_save_json_document,
     ) -> None:
         """A successful pipeline should create all analytical outputs."""
 
@@ -273,10 +298,29 @@ class ETLPipelineTests(unittest.TestCase):
             quality_report
         )
 
-        mock_build_analytics_outputs.return_value = (
-            monthly_summary,
-            firm_summary,
-        )
+        execution_order: list[str] = []
+
+        def build_analytics(*args, **kwargs):
+            execution_order.append("analytics")
+            return monthly_summary, firm_summary
+
+        def save_csv(*args, **kwargs):
+            self.assertNotIn(
+                "pipeline_completed_at_utc",
+                quality_report.get("pipeline_context", {}),
+            )
+            execution_order.append("csv")
+
+        def save_quality(*args, **kwargs):
+            self.assertIn(
+                "pipeline_completed_at_utc",
+                quality_report["pipeline_context"],
+            )
+            execution_order.append("quality")
+
+        mock_build_analytics_outputs.side_effect = build_analytics
+        mock_save_dataframe_csv.side_effect = save_csv
+        mock_save_json_document.side_effect = save_quality
 
         result = run_etl()
 
@@ -310,13 +354,25 @@ class ETLPipelineTests(unittest.TestCase):
 
         mock_ensure_data_directories.assert_called_once()
 
-        mock_save_core_outputs.assert_called_once()
-
         mock_build_analytics_outputs.assert_called_once()
 
         self.assertEqual(
             mock_save_dataframe_csv.call_count,
-            2,
+            4,
+        )
+
+        mock_save_json_document.assert_called_once()
+
+        self.assertEqual(
+            execution_order,
+            [
+                "analytics",
+                "csv",
+                "csv",
+                "csv",
+                "csv",
+                "quality",
+            ],
         )
 
         self.assertIn(
@@ -324,8 +380,9 @@ class ETLPipelineTests(unittest.TestCase):
             quality_report,
         )
 
+    @patch("etl.save_json_document")
+    @patch("etl.save_dataframe_csv")
     @patch("etl.build_analytics_outputs")
-    @patch("etl.save_core_outputs")
     @patch("etl.build_data_quality_report")
     @patch("etl.transform_recalls")
     @patch("etl.extract_records")
@@ -336,8 +393,9 @@ class ETLPipelineTests(unittest.TestCase):
         mock_extract_records,
         mock_transform_recalls,
         mock_build_data_quality_report,
-        mock_save_core_outputs,
         mock_build_analytics_outputs,
+        mock_save_dataframe_csv,
+        mock_save_json_document,
     ) -> None:
         """Critical quality failures must stop analytical output creation."""
 
@@ -384,6 +442,14 @@ class ETLPipelineTests(unittest.TestCase):
 
         mock_build_data_quality_report.return_value = {
             "overall_status": "failed",
+            "issues": [
+                {
+                    "severity": "error",
+                    "code": "missing_required_columns",
+                    "message": "Required columns are missing.",
+                    "affected_records": 0,
+                }
+            ],
             "summary": {
                 "error_count": 1,
                 "warning_count": 0,
@@ -397,9 +463,67 @@ class ETLPipelineTests(unittest.TestCase):
         ):
             run_etl()
 
-        mock_save_core_outputs.assert_called_once()
-
         mock_build_analytics_outputs.assert_not_called()
+        mock_save_dataframe_csv.assert_not_called()
+        mock_save_json_document.assert_not_called()
+
+    @patch("etl.save_json_document")
+    @patch("etl.save_dataframe_csv")
+    @patch("etl.build_analytics_outputs")
+    @patch("etl.build_data_quality_report")
+    @patch("etl.transform_recalls")
+    @patch("etl.extract_records")
+    @patch("etl.ensure_data_directories")
+    def test_analytics_failure_does_not_save_processed_outputs(
+        self,
+        mock_ensure_data_directories,
+        mock_extract_records,
+        mock_transform_recalls,
+        mock_build_data_quality_report,
+        mock_build_analytics_outputs,
+        mock_save_dataframe_csv,
+        mock_save_json_document,
+    ) -> None:
+        """Failed analytics must not partially replace processed outputs."""
+
+        records = [{"recall_number": "D-1001-2024"}]
+        metadata = {
+            "records_extracted": 1,
+            "extracted_at_utc": "2026-08-06T12:00:00+00:00",
+            "extraction_status": "live",
+            "used_cached_data": False,
+        }
+        recalls_frame = pd.DataFrame({"record_id": ["record-001"]})
+        classification_dimension = pd.DataFrame(
+            {"classification": ["Class I"]}
+        )
+
+        mock_extract_records.return_value = records, metadata
+        mock_transform_recalls.return_value = (
+            recalls_frame,
+            classification_dimension,
+        )
+        mock_build_data_quality_report.return_value = {
+            "overall_status": "passed",
+            "issues": [],
+            "summary": {
+                "error_count": 0,
+                "warning_count": 0,
+                "info_count": 0,
+            },
+        }
+        mock_build_analytics_outputs.side_effect = RuntimeError(
+            "analytics failed"
+        )
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "analytics failed",
+        ):
+            run_etl()
+
+        mock_save_dataframe_csv.assert_not_called()
+        mock_save_json_document.assert_not_called()
 
 
 if __name__ == "__main__":

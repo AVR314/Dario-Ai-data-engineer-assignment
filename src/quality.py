@@ -397,10 +397,31 @@ def build_data_quality_report(
             affected_records=unmapped_classification_count,
         )
 
+    reported_count = None
     extracted_count = None
+    api_reported_count_matches_extraction = None
     row_count_matches_extraction = None
 
     if extraction_metadata is not None:
+        reported_count = extraction_metadata.get(
+            "records_reported_by_api"
+        )
+
+        if reported_count is not None:
+            try:
+                reported_count = int(reported_count)
+            except (TypeError, ValueError):
+                _append_issue(
+                    issues,
+                    severity="warning",
+                    code="invalid_api_reported_record_count",
+                    message=(
+                        "Extraction metadata contains an invalid "
+                        "records_reported_by_api value."
+                    ),
+                )
+                reported_count = None
+
         extracted_count = extraction_metadata.get(
             "records_extracted"
         )
@@ -419,6 +440,31 @@ def build_data_quality_report(
                     ),
                 )
                 extracted_count = None
+
+        if (
+            reported_count is not None
+            and extracted_count is not None
+        ):
+            api_reported_count_matches_extraction = (
+                reported_count == extracted_count
+            )
+
+            if not api_reported_count_matches_extraction:
+                _append_issue(
+                    issues,
+                    severity="warning",
+                    code="api_reported_count_mismatch",
+                    message=(
+                        "The number of records extracted from openFDA "
+                        "does not match the total reported by the API. "
+                        f"Reported={reported_count}, "
+                        f"extracted={extracted_count}. The source result "
+                        "set may have changed during pagination."
+                    ),
+                    affected_records=abs(
+                        extracted_count - reported_count
+                    ),
+                )
 
         if extracted_count is not None:
             row_count_matches_extraction = (
@@ -513,8 +559,12 @@ def build_data_quality_report(
             ),
         },
         "reconciliation": {
+            "records_reported_by_api": reported_count,
             "records_extracted": extracted_count,
             "records_transformed": total_records,
+            "api_reported_count_matches_extraction": (
+                api_reported_count_matches_extraction
+            ),
             "row_count_matches_extraction": (
                 row_count_matches_extraction
             ),
