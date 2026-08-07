@@ -612,6 +612,13 @@ def render_css() -> None:
             padding: .5rem .72rem; }}
         div[data-testid="stMain"] div[data-testid="stMetricValue"] {{
             font-size: 1.65rem; }}
+        div[data-testid="stElementContainer"]:has(h3#data-quality)
+        + div[data-testid="stElementContainer"]:has(.section-intro)
+        + div[data-testid="stLayoutWrapper"]
+        > div[data-testid="stHorizontalBlock"]
+        > div[data-testid="stColumn"]:first-child
+        div[data-testid="stMetricValue"] {{
+            font-size: clamp(1rem, 1.4vw, 1.65rem) !important; }}
         div[data-testid="stTabs"] div[data-baseweb="tab-list"] {{ gap: .15rem; }}
         div[data-testid="stTabs"] button[data-baseweb="tab"] {{
             height: 2.1rem; padding: 0 .62rem; }}
@@ -1244,7 +1251,7 @@ def render_data_quality(
     overall_status = quality_report.get("overall_status")
     compact_quality_status = {
         "passed": "Passed",
-        "passed_with_warnings": "Warnings",
+        "passed_with_warnings": "Passed with warnings",
         "failed": "Failed",
     }.get(str(overall_status).lower(), format_status(overall_status))
     metrics = st.columns(4)
@@ -1386,9 +1393,9 @@ def render_data_quality(
         )
 
     detail_one, detail_two = st.columns(2)
-    with detail_one.expander("Complete quality report"):
+    with detail_one.expander("Technical quality report (JSON)"):
         st.json(quality_report)
-    with detail_two.expander("Complete extraction metadata"):
+    with detail_two.expander("Extraction metadata (JSON)"):
         st.json(extraction_metadata)
 
 
