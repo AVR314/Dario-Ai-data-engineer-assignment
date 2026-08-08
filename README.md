@@ -357,4 +357,6 @@ than accepting them uncritically.
 │       ├── firm_summary.csv
 │       ├── monthly_summary.csv
 │       └── recalls_enriched.csv
+└── ai_transcript/
+    └── development_transcript.md
 ```
